@@ -41,6 +41,32 @@ else
   status "Resolved node version: $node_version"
 fi
 
+# install sass / compass / haml
+status "Installing Sass / Compass / Haml"
+export GEM_HOME=$build_dir/.gem/ruby/2.2.0
+PATH="$GEM_HOME/bin:$PATH"
+if test -d $cache_dir/ruby/.gem; then
+  status "Restoring ruby gems directory from cache"
+  cp -r $cache_dir/ruby/.gem $build_dir
+  HOME=$build_dir gem update sass --user-install --no-rdoc --no-ri
+  HOME=$build_dir gem update compass --user-install --no-rdoc --no-ri
+  HOME=$build_dir gem update haml --user-install --no-rdoc --no-ri
+else
+  HOME=$build_dir gem install sass --user-install --no-rdoc --no-ri
+  HOME=$build_dir gem install compass --user-install --no-rdoc --no-ri
+  HOME=$build_dir gem install haml --user-install --no-rdoc --no-ri
+fi
+
+# cache ruby gems
+rm -rf $cache_dir/ruby
+mkdir -p $cache_dir/ruby
+
+# If app has a gems directory, cache it.
+if test -d $build_dir/.gem; then
+  status "Caching ruby gems directory for future builds"
+  cp -r $build_dir/.gem $cache_dir/ruby
+fi
+
 # Download node from Heroku's S3 mirror of nodejs.org/dist
 status "Downloading and installing node"
 node_url="http://s3pository.heroku.com/node/v$node_version/node-v$node_version-linux-x64.tar.gz"
@@ -127,47 +153,6 @@ if [ ! -e $build_dir/Procfile ]; then
   fi
 fi
 
-# install sass / compass / haml
-status "Installing Sass / Compass / Haml"
-export GEM_HOME=$build_dir/.gem/ruby/2.2.0
-PATH="$GEM_HOME/bin:$PATH"
-if test -d $cache_dir/ruby/.gem; then
-  status "Restoring ruby gems directory from cache"
-  cp -r $cache_dir/ruby/.gem $build_dir
-  HOME=$build_dir gem update sass --user-install --no-rdoc --no-ri
-  HOME=$build_dir gem update compass --user-install --no-rdoc --no-ri
-  HOME=$build_dir gem update haml --user-install --no-rdoc --no-ri
-else
-  HOME=$build_dir gem install sass --user-install --no-rdoc --no-ri
-  HOME=$build_dir gem install compass --user-install --no-rdoc --no-ri
-  HOME=$build_dir gem install haml --user-install --no-rdoc --no-ri
-fi
-
-# cache ruby gems
-rm -rf $cache_dir/ruby
-mkdir -p $cache_dir/ruby
-
-# If app has a gems directory, cache it.
-if test -d $build_dir/.gem; then
-  status "Caching ruby gems directory for future builds"
-  cp -r $build_dir/.gem $cache_dir/ruby
-fi
-
-# Testing for gulp
-is_gulpfile_present= [ -f $build_dir/gulpfile.js ];
-if $is_gulpfile_present; then
-  status "Found Gulpfile"
-else
-  status "No Gulpfile (gulpfile.js) found"
-fi
-
-# Check and run Gulp
-(
-  if $is_gulpfile_present; then
-    status "Running gulp heroku:$NODE_ENV task"
-    $build_dir/node_modules/.bin/gulp heroku
-  fi
-)
 
 # Update the PATH
 status "Building runtime environment"
